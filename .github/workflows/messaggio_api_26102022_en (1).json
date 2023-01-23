@@ -1,0 +1,1855 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "UPD 26.10.2022",
+    "title": "Multichannel Messaging Platform",
+    "contact": {},
+    "description": "# Main principles\n\nMessaggio messaging platform supports a variety of message delivery channels.\nDepending on the channel's capabilities, certain message mockups are possible that are composed of the elements \"text\", \"image\", and \"button\".\n\n  | Channel   | Message layouts  |             |                   |                          |\n  | ------- | --------| ------      | --------          | --------                 | \n  | Viber   | Text   | Image | Text+Button      | Text+Image+Button |\n  | WhatsApp| Text   | Image | Image+Text | Text+Image+Button |\n  | VK.com  | Text   | Image | Image+Text |  |\n  | SMS     | Text   |             |                   |                          |\n\nViber also supports sending video in one of the following message layouts: video, video+text, video+text+button.\n\nThe final message is determined automatically based on the transmitted parameters. If a parameter has an empty field, it is considered not transmitted.\n\n**If the subscriber does not have Viber, WhatsApp or VK messenger, the system will send a message using the next provided channel in \"channels\" field. There is also an option to send SMS message to subscriber if primary channel message was not delivered within determined time frame (TTL).**\n\nThe system also has the ability to forward messages by other channels if the subscriber does not have the messenger to which the message is primarily sent.\n\nThe delivery information will be sent to your callback URL. You can specify it in the project settings of your Messaggio account. You can also independently request the delivery status of a message by sending a request with the message identifier.\n\nTo get started, you need to create a Sender on your channel in your Messaggio dashboard, wait for it to be activated, and get the settings for use in the API.\n\nMessaggio support team may request additional information required to register the sender.\n\n# Available values for the status field in the delivery report\n| Value   | Description |\n| ------- | --------|\n| 200   | Message accepted by Messaggio platform for processing  |\n| 100   | Message sent to provider (Mobile operator, Viber, etc.)  |\n| 199   | A message with this text has already been sent to this number (timeout 15 minutes)  |\n| 198   | Bocked by antifraud. The message contains prohibited content   |\n| 98   | The sender name does not exist in the system, or is configured incorrectly  |\n| 97   | Request error (missing comma, quotes, parameter is written incorrectly, etc.)  |\n| 96   | Incorrect message type (for example, image via SMS channel) |\n| 95   | An attempt to send a 1way message from a service registeres as 2way or vice versa |\n| 94   | A required parameter is missing in the request, or an extra one is present |\n| 92   | The user has blocked messages from the service, or all service messages in the app settings |\n| 91   | The sending channel is not available for the user (not registered in the messenger, etc.) |\n| 90   | Unsupported device  |\n| 89   | IP is not registered for this service  |\n| 87   | Viber billing error, sending to a direction (country) closed for this service |\n| 85   | The session with the user is not open, and the message does not match any pattern (WhatsApp)  |\n| 70   | Message received by user  |\n| 69   | Message read by user  |\n| 68   | Message TTL expired  |\n| 67   | User clicked the link in the message  |\n| 66   | User subscribed to mailings from the service (Viber)  |\n| 65   | User has unsubscribed from the service mailings (Viber)  |\n| 60   | Message not delivered (SMS)  |\n"
+  },
+  "tags": [
+    {
+      "name": "Sending messages"
+    },
+    {
+      "name": "Message status request"
+    },
+    {
+      "name": "Callback"
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://msg.messaggio.com/api/v1"
+    }
+  ],
+  "paths": {
+    "/send": {
+      "post": {
+        "servers": [
+          {
+            "url": "https://msg.messaggio.com/api/v1"
+          }
+        ],
+        "summary": "Multichannel Messaging",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "tags": [
+          "Sending messages"
+        ],
+        "operationId": "Sendmessages",
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessagesRequest"
+              }
+            }
+          },
+          "description": "Request body.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK. Request is accepted.",
+            "headers": {
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendMessagesResponse"
+                },
+                "examples": {
+                  "response": {
+                    "value": {
+                      "accepted_at": "2021-04-02T15-14-26Z",
+                      "messages": [
+                        {
+                          "recipient": {
+                            "phone": "35699554433"
+                          },
+                          "message_id": "ff1ca1f9-94f2-4e43-97ed-a4ca672957c1"
+                        },
+                        {
+                          "recipient": {
+                            "phone": "123-bad-phone"
+                          },
+                          "error": {
+                            "title": "Invalid phone number",
+                            "detail": "invalid phone number"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Request validation error.",
+            "headers": {
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "response": {
+                    "value": {
+                      "title": "Invalid contents",
+                      "detail": "viber contents field is empty"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. No access to this feature.",
+            "headers": {
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "response": {
+                    "value": {
+                      "title": "Messaggio-Login header not set",
+                      "detail": "Messaggio-Login header not set"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Uprocessable Entity. Request body read errors.",
+            "headers": {
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "response": {
+                    "value": {
+                      "title": "Failed to parse request",
+                      "detail": "json parse error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. If server responds with this status, the request should be repeated.",
+            "headers": {
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "response": {
+                    "value": {
+                      "title": "Internal server error",
+                      "detail": "error description"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/statuses": {
+      "post": {
+        "servers": [
+          {
+            "url": "https://msg.messaggio.com/api/v1"
+          }
+        ],
+        "summary": "Message status request",
+        "tags": [
+          "Message status request"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "operationId": "Receivestatus",
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendStatusRequest"
+              }
+            }
+          },
+          "description": "Request body.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "headers": {},
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StatusRequestResponse": {
+        "example": {
+          "statuses": [
+            {
+              "message_id": "073ff427-5fd3-4cde-b611-6071d75ec7eb",
+              "type": "status",
+              "status": {
+                "message_id": "073ff427-5fd3-4cde-b611-6071d75ec7eb",
+                "channel": "sms",
+                "status": 70,
+                "timestamp": "2022-01-26T14:15:22.484005102Z",
+                "recipient": {
+                  "phone": "35699554433"
+                }
+              }
+            },
+            {
+              "message_id": "ef1ee51d-9dc9-40e5-8914-480d14210d6c",
+              "type": "error",
+              "error": "not found"
+            }
+          ]
+        },
+        "properties": {
+          "statuses": {
+            "description": "Report's array.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "message_id": {
+                  "description": "Unique message ID.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Type of report.",
+                  "type": "string"
+                },
+                "error": {
+                  "description": "Error description",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Object containing message's status.",
+                  "type": "object",
+                  "properties": {
+                    "message_id": {
+                      "description": "Unique message ID.",
+                      "type": "string"
+                    },
+                    "channel": {
+                      "description": "Channel used when sending the message.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "Message status.",
+                      "type": "integer"
+                    },
+                    "timestamp": {
+                      "description": "Time when the status was assigned to the message.",
+                      "type": "string"
+                    },
+                    "recipient": {
+                      "description": "Object containing information about the receiver.",
+                      "type": "object",
+                      "properties": {
+                        "phone": {
+                          "description": "Receiver's phone number.",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ReceiveStatusTwoway": {
+        "example": {
+          "message_id": "703be60f-8e98-4d40-aa17-138703df6261",
+          "channel": "viber",
+          "timestamp": "2021-11-03T09-49-34Z",
+          "type": "recipient_response",
+          "recipient_response": {
+            "recipient": {
+              "phone": 35699554433
+            },
+            "from": "msgiotest",
+            "content": {
+              "type": "text",
+              "text": "Inbound message text"
+            }
+          }
+        },
+        "properties": {
+          "message_id": {
+            "description": "The message identifier in the system.",
+            "type": "string"
+          },
+          "channel": {
+            "description": "Sending channel.",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "Report sending time.",
+            "type": "string"
+          },
+          "recipient_response": {
+            "properties": {
+              "recipient": {
+                "properties": {
+                  "phone": {
+                    "description": "User phone number.",
+                    "type": "string"
+                  }
+                }
+              },
+              "from": {
+                "description": "Sender to which user replied to.",
+                "type": "string"
+              },
+              "content": {
+                "properties": {
+                  "type": {
+                    "description": "Type of inbound message.",
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "media"
+                    ]
+                  },
+                  "text": {
+                    "description": "Text of inbound message.",
+                    "type": "string"
+                  },
+                  "url": {
+                    "description": "Link to the media content.",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "description": "Name of the media content.",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "SendStatusRequest": {
+        "title": "Send status request",
+        "example": {
+          "recipients": [
+            {
+              "id": "073ff427-5fd3-4cde-b611-6071d75ec7eb"
+            },
+            {
+              "id": "ef1ee51d-9dc9-40e5-8914-480d14210d6c"
+            }
+          ],
+          "channels": [
+            "sms"
+          ],
+          "sms": {
+            "from": "EmptyTest"
+          }
+        },
+        "properties": {
+          "recipients": {
+            "description": "Array of message ID's.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Message ID of the message.",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "channels": {
+            "description": "Channel which was used to send a message.",
+            "type": "string",
+            "enum": [
+              "viber",
+              "sms",
+              "flashcall",
+              "vk",
+              "whatsapp"
+            ]
+          },
+          "sms": {
+            "description": "Used if message was sent via SMS channel.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "description": "Code API used when sending the messages.",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "flashcall": {
+            "description": "Used if message was sent via Flashcall channel.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "description": "Code API used when sending the messages.",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "viber": {
+            "description": "Used if message was sent via Viber channel.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "description": "Code API used when sending the messages.",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "whatsapp": {
+            "description": "Used if message was sent via WhatsApp channel.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "description": "Code API used when sending the messages.",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "vk": {
+            "description": "Used if message was sent via VK channel.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "description": "Code API used when sending the messages.",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "recipients",
+          "channels"
+        ]
+      },
+      "SendMessagesRequest": {
+        "title": "Send message request",
+        "example": {
+          "recipients": [
+            {
+              "phone": "35699554433"
+            },
+            {
+              "phone": "123-bad-phone"
+            }
+          ],
+          "channels": [
+            "viber",
+            "whatsapp",
+            "vk",
+            "sms",
+            "flashcall"
+          ],
+          "options": {
+            "ttl": 60,
+            "dlr_callback_url": "https://example.com/dlr",
+            "external_id": "messaggio-acc-external-id-0"
+          },
+          "viber": {
+            "from": "Viberfake",
+            "label": "promotion",
+            "content": [
+              {
+                "type": "image",
+                "image": {
+                  "url": "https://example.com/cat.jpg"
+                }
+              },
+              {
+                "type": "text",
+                "text": "Text of your Viber message"
+              },
+              {
+                "type": "button",
+                "button": {
+                  "caption": "Press the button",
+                  "callback": "https://example.com"
+                }
+              }
+            ]
+          },
+          "sms": {
+            "from": "SMSFake",
+            "content": [
+              {
+                "type": "text",
+                "text": "Text of your SMS message"
+              }
+            ]
+          },
+          "flashcall": {
+            "from": "FlashFake",
+            "content": [
+              {
+                "type": "text",
+                "text": 1234
+              }
+            ]
+          },
+          "whatsapp": {
+            "from": "Whatsappfake",
+            "content": [
+              {
+                "type": "location",
+                "longitude": 27.380583,
+                "latitude": 33.631839,
+                "name": "Location name",
+                "address": "Location address"
+              }
+            ]
+          },
+          "vk": {
+            "from": "VKfake",
+            "content": [
+              {
+                "type": "text",
+                "text": "Text of your VK message"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "properties": {
+          "recipients": {
+            "description": "This field contains a range of message recipients. The message recipient object format contains one mandatory field phone - the receiver's phone number without +.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageRecipient"
+            }
+          },
+          "channels": {
+            "description": "Channel order which will be used to determine priority channel to send messages through. In case of unsuccessful delivery to channel or expired TTL, next channel in order will be used to send the message.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "viber",
+                "sms",
+                "flashcall",
+                "whatsapp",
+                "vk"
+              ]
+            }
+          },
+          "options": {
+            "$ref": "#/components/schemas/SendMessagesOptions"
+          },
+          "viber": {
+            "$ref": "#/components/schemas/Viber"
+          },
+          "sms": {
+            "$ref": "#/components/schemas/SMS"
+          },
+          "flashcall": {
+            "$ref": "#/components/schemas/FlashBody"
+          },
+          "whatsapp": {
+            "$ref": "#/components/schemas/Whatsapp"
+          },
+          "vk": {
+            "$ref": "#/components/schemas/VK"
+          }
+        },
+        "required": [
+          "recipients",
+          "channels"
+        ]
+      },
+      "MessageRecipient": {
+        "title": "Message recipient.",
+        "example": {
+          "phone": 35699554433
+        },
+        "type": "object",
+        "properties": {
+          "phone": {
+            "description": "Recipient's phone number.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone"
+        ]
+      },
+      "SendMessagesOptions": {
+        "title": "Optional parameters.",
+        "example": {
+          "ttl": 60,
+          "dlr_callback_url": "https://example.com/dlr",
+          "external_id": "messaggio-acc-external-id-0"
+        },
+        "type": "object",
+        "properties": {
+          "ttl": {
+            "description": "The number of seconds after which a message is treated as undeliverable to a channel and a message should be sent to the next channel. The minimum value for this parameter is 60. The defaul setting is 86400 (24 hours).",
+            "type": "number",
+            "default": 86400
+          },
+          "dlr_callback_url": {
+            "description": "Used to override the sending address for message delivery statuses. The default value is specified in the project settings in Messaggio's personal account.",
+            "type": "string"
+          },
+          "external_id": {
+            "description": "Used to identify messages by the user in the system and transmitted together with the delivery status.",
+            "type": "string"
+          }
+        }
+      },
+      "Viber": {
+        "title": "Viber message",
+        "example": {
+          "from": "Viberfake",
+          "label": "promotion",
+          "device": "phone",
+          "content": [
+            {
+              "type": "text",
+              "text": "Text of your Viber message"
+            }
+          ]
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "description": "Code API in Messaggio's personal account.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Information type transmitted to Viber user. Can be transaction or promotion.",
+            "default": "promotion",
+            "type": "string",
+            "enum": [
+              "promotion",
+              "transaction"
+            ]
+          },
+          "device": {
+            "description": "You can specify on which devices you want to deliver a Viber message: to all user devices where Viber app is authorized under recipient's account, or only to the primary mobile device.",
+            "default": "all",
+            "type": "string",
+            "enum": [
+              "all",
+              "phone"
+            ]
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ViberContent"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "label",
+          "content"
+        ]
+      },
+      "ViberContent": {
+        "title": "Viber content",
+        "example": {
+          "type": "text",
+          "text": "Viber content"
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Content type.",
+            "type": "string",
+            "enum": [
+              "text",
+              "button",
+              "image"
+            ]
+          },
+          "text": {
+            "description": "Message text.",
+            "type": "string"
+          },
+          "button": {
+            "$ref": "#/components/schemas/ViberButton"
+          },
+          "image": {
+            "$ref": "#/components/schemas/ViberImage"
+          },
+          "video": {
+            "$ref": "#/components/schemas/ViberVideo"
+          },
+          "file": {
+            "$ref": "#/components/schemas/ViberFile"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "ViberFile": {
+        "title": "Файл Viber",
+        "example": {
+          "url": "https://example.com/cat.doc",
+          "name": "Important File",
+          "type": "doc"
+        },
+        "type": "object",
+        "properties": {
+          "url": {
+            "description": "File URL.",
+            "type": "string"
+          },
+          "name": {
+            "description": "File name.",
+            "type": "string"
+          },
+          "type": {
+            "description": "File extension.",
+            "type": "string",
+            "enum": [
+              "doc",
+              "docx",
+              "rtf",
+              "dot",
+              "dotx",
+              "odt",
+              "odf",
+              "fodt",
+              "txt",
+              "info",
+              "pdf",
+              "xps",
+              "pdax",
+              "eps",
+              "xls",
+              "xlsx",
+              "ods",
+              "fods",
+              "csv",
+              "xlsm",
+              "xltx"
+            ]
+          }
+        },
+        "required": [
+          "url",
+          "name",
+          "type"
+        ]
+      },
+      "ViberVideo": {
+        "title": "Viber Video",
+        "example": {
+          "url": "https://example.com/cat.mp4",
+          "thumbnail": "https://example.com/cat.jpg",
+          "button_caption": "Cat video",
+          "file_size_mb": 43,
+          "duration_seconds": 90
+        },
+        "type": "object",
+        "properties": {
+          "url": {
+            "description": "Video URL.",
+            "type": "string"
+          },
+          "thumbnail": {
+            "description": "Thumbnail URL.",
+            "type": "string"
+          },
+          "button_caption": {
+            "description": "Button text.",
+            "type": "string"
+          },
+          "file_size_mb": {
+            "description": "Video size in megabytes.",
+            "type": "integer"
+          },
+          "duration_seconds": {
+            "description": "Video duration in seconds.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "url",
+          "thumbnail",
+          "file_size_mb"
+        ]
+      },
+      "ViberButton": {
+        "title": "Viber Button",
+        "example": {
+          "button": {
+            "caption": "Press me!",
+            "callback": "https://example.com/"
+          }
+        },
+        "type": "object",
+        "properties": {
+          "caption": {
+            "description": "Button text.",
+            "type": "string"
+          },
+          "callback": {
+            "description": "Page that opens at the touch of a button.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "caption",
+          "callback"
+        ]
+      },
+      "ViberImage": {
+        "title": "Viber image",
+        "example": {
+          "url": "https://example.com/cat.jpg"
+        },
+        "type": "object",
+        "properties": {
+          "url": {
+            "description": "Image URL.",
+            "type": "string"
+          }
+        }
+      },
+      "SMS": {
+        "title": "SMS message",
+        "example": {
+          "from": "SMSfake",
+          "content": [
+            {
+              "type": "text",
+              "text": "SMS text"
+            }
+          ]
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "description": "Code API in Messaggio's personal account.",
+            "type": "string"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SMSContent"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "content"
+        ]
+      },
+      "SMSContent": {
+        "title": "SMS content",
+        "example": {
+          "type": "text",
+          "text": "SMS text"
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Content type.",
+            "type": "string",
+            "enum": [
+              "text"
+            ]
+          },
+          "text": {
+            "description": "Message text.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "FlashBody": {
+        "title": "Flashcall message",
+        "example": {
+          "from": "FlashFake",
+          "content": [
+            {
+              "type": "text",
+              "text": 1234
+            }
+          ]
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "description": "Code API in Messaggio's personal account.",
+            "type": "string"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlashContent"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "content"
+        ]
+      },
+      "FlashContent": {
+        "title": "Flashcall content",
+        "example": {
+          "type": "text",
+          "text": 1234
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Content type.",
+            "type": "string",
+            "enum": [
+              "text"
+            ]
+          },
+          "text": {
+            "description": "Code to be sent, can only be 4 digits.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "Whatsapp": {
+        "title": "Whatsapp message",
+        "example": {
+          "from": "Whatsappfake",
+          "content": [
+            {
+              "type": "text",
+              "text": "WhatsApp message text"
+            }
+          ]
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "description": "Code API in Messaggio's personal account.",
+            "type": "string"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsappContent"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "content"
+        ]
+      },
+      "WhatsappContent": {
+        "title": "WhatsApp content",
+        "example": {
+          "type": "text",
+          "text": "hi whatsapp"
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "The content array of the sent message. Only one content type can be used in a message.",
+            "type": "string",
+            "enum": [
+              "text",
+              "media",
+              "template",
+              "location",
+              "contact"
+            ]
+          },
+          "text": {
+            "description": "Message text.",
+            "type": "string"
+          },
+          "media": {
+            "$ref": "#/components/schemas/WhatsappMediaContent"
+          },
+          "template": {
+            "$ref": "#/components/schemas/WhatsappTemplateContent"
+          },
+          "location": {
+            "$ref": "#/components/schemas/WhatsappLocationContent"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/WhatsappContactContent"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "WhatsappMediaContent": {
+        "title": "WhatsApp media content.",
+        "example": {
+          "type": "image",
+          "url": "https://example.com/cat.jpg"
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Message's media type.",
+            "type": "string",
+            "enum": [
+              "image",
+              "video",
+              "audio",
+              "sticker",
+              "document"
+            ]
+          },
+          "url": {
+            "description": "Link to the media file.",
+            "type": "string"
+          },
+          "filename": {
+            "description": "File name.",
+            "type": "string"
+          },
+          "caption": {
+            "description": "Media description.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "url"
+        ]
+      },
+      "WhatsappTemplateContent": {
+        "title": "WhatsApp Template Content",
+        "example": {
+          "id": "some-whatsapp-template-id",
+          "language": "en",
+          "header": {
+            "type": "image",
+            "url": "https://example.com/cat.jpg"
+          },
+          "body": {
+            "parameters": [
+              {
+                "text": "template-param1"
+              },
+              {
+                "text": "template-param2"
+              }
+            ]
+          },
+          "buttons": [
+            {
+              "type": "quick_reply",
+              "quick_reply_payload": "quick-reply-payload"
+            }
+          ]
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Template ID (Template name).",
+            "type": "string"
+          },
+          "language": {
+            "description": "Template language.",
+            "type": "string"
+          },
+          "header": {
+            "$ref": "#/components/schemas/WhatsappTemplateHeader"
+          },
+          "body": {
+            "$ref": "#/components/schemas/WhatsappTemplateBody"
+          },
+          "buttons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsappTemplateButton"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "language"
+        ]
+      },
+      "WhatsappTemplateHeader": {
+        "title": "WhatsApp Template Header",
+        "example": {
+          "type": "image",
+          "url": "https://example.com/cat.jpg"
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Template header type.",
+            "type": "string",
+            "enum": [
+              "text",
+              "image",
+              "video",
+              "document"
+            ]
+          },
+          "text": {
+            "description": "Template header text.",
+            "type": "string"
+          },
+          "image": {
+            "$ref": "#/components/schemas/WhatsappMediaContent"
+          },
+          "video": {
+            "$ref": "#/components/schemas/WhatsappMediaContent"
+          },
+          "document": {
+            "$ref": "#/components/schemas/WhatsappMediaContent"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "WhatsappTemplateBody": {
+        "title": "WhatsApp Template Body",
+        "example": {
+          "parameters": [
+            {
+              "text": "template-param1"
+            },
+            {
+              "text": "template-param2"
+            }
+          ]
+        },
+        "type": "object",
+        "properties": {
+          "parameters": {
+            "description": "Template body parameters.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsappTemplateBodyParameter"
+            }
+          }
+        }
+      },
+      "WhatsappTemplateBodyParameter": {
+        "title": "Template body parameter.",
+        "example": {
+          "text": "template-param1"
+        },
+        "type": "object",
+        "properties": {
+          "text": {
+            "description": "The text parameter value.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "WhatsappTemplateButton": {
+        "title": "WhatsApp Template Button",
+        "example": {
+          "type": "quick_reply",
+          "quick_reply_payload": "quick-reply-payload"
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Template header type. You can use either 1-3 quick_reply buttons or 1 url button in the request.",
+            "type": "string",
+            "enum": [
+              "quick_reply",
+              "url"
+            ]
+          },
+          "quick_reply_payload": {
+            "description": "The text that will be sent in the notification when the user clicks a quick_reply button.",
+            "type": "string"
+          },
+          "url_parameter": {
+            "description": "Parameter in the button URL. Should be specified only if the URL button has variable parameters."
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "WhatsappLocationContent": {
+        "title": "WhatsApp Geolocation",
+        "example": {
+          "longitude": 27.380583,
+          "latitude": 33.631839,
+          "name": "Location name"
+        },
+        "type": "object",
+        "properties": {
+          "longitude": {
+            "description": "The logitude of the location to be sent.",
+            "type": "number"
+          },
+          "latitude": {
+            "description": "The latitude of the location to be sent.",
+            "type": "number"
+          },
+          "name": {
+            "description": "Location name.",
+            "type": "string"
+          },
+          "address": {
+            "description": "Location address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "longitude",
+          "latitude"
+        ]
+      },
+      "WhatsappContactContent": {
+        "title": "WhatsApp Contact",
+        "example": {
+          "name": {
+            "prefix": "Dr",
+            "first_name": "Bruce",
+            "last_name": "Williams",
+            "formatted_name": "Dr Bruce Williams"
+          },
+          "organisation": {
+            "company": "Messaggio",
+            "department": "Engineering",
+            "title": "Intefration specialist"
+          },
+          "phones": [
+            {
+              "type": "work",
+              "phone": 1234567890
+            }
+          ],
+          "emails": [
+            {
+              "type": "work",
+              "email": "BW@messaggio.com"
+            }
+          ],
+          "urls": [
+            {
+              "type": "work",
+              "url": "https://messaggio.com"
+            }
+          ],
+          "messengers": [
+            {
+              "service": "whatsapp",
+              "username": 1234567890
+            }
+          ]
+        },
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/WhatsappContactName"
+          },
+          "organisation": {
+            "$ref": "#/components/schemas/WhatsappContactOrganisation"
+          },
+          "phones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsappContactPhone"
+            }
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsappContactEmail"
+            }
+          },
+          "urls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsappContactURL"
+            }
+          },
+          "messengers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsappContactMessenger"
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsappContactAddress"
+            }
+          },
+          "birthday": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "WhatsappContactName": {
+        "title": "WhatsApp contact name",
+        "example": {
+          "name": {
+            "prefix": "Dr",
+            "first_name": "Bruce",
+            "last_name": "Williams",
+            "formatted_name": "Dr Bruce Williams"
+          }
+        },
+        "type": "object",
+        "properties": {
+          "prefix": {
+            "description": "Contact name prefix.",
+            "type": "string"
+          },
+          "first_name": {
+            "description": "Contact name.",
+            "type": "string"
+          },
+          "middle_name": {
+            "description": "Contact second name.",
+            "type": "string"
+          },
+          "last_name": {
+            "description": "Contact surname.",
+            "type": "string"
+          },
+          "suffix": {
+            "description": "Contact name suffix.",
+            "type": "string"
+          },
+          "formatted_name": {
+            "description": "Formatted contact name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formatted_name"
+        ]
+      },
+      "WhatsappContactOrganisation": {
+        "title": "WhatsApp contact organization format",
+        "example": {
+          "company": "Messaggio",
+          "department": "Engineering",
+          "title": "Integration specialist"
+        },
+        "type": "object",
+        "properties": {
+          "company": {
+            "description": "Contact company name.",
+            "type": "string"
+          },
+          "department": {
+            "description": "Contact department.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Contact title.",
+            "type": "string"
+          }
+        }
+      },
+      "WhatsappContactPhone": {
+        "title": "WhatsApp contact phone number",
+        "example": {
+          "type": "work",
+          "phone": 1234567890
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Contact phone number type (home, work, etc.)",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Phone number.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "phone"
+        ]
+      },
+      "WhatsappContactEmail": {
+        "title": "WhatsApp contact email address",
+        "example": {
+          "type": "work",
+          "email": "bw@messaggio.com"
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Contact email type (home, work, etc.).",
+            "type": "string"
+          },
+          "email": {
+            "description": "Email address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "email"
+        ]
+      },
+      "WhatsappContactURL": {
+        "title": "WhatsApp contact URL",
+        "example": {
+          "type": "work",
+          "url": "https://messaggio.com"
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Contact URL type.",
+            "type": "string"
+          },
+          "url": {
+            "description": "Contact URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "url"
+        ]
+      },
+      "WhatsappContactMessenger": {
+        "title": "WhatsApp messenger format",
+        "example": {
+          "service": "whatsapp",
+          "username": 1234567890
+        },
+        "type": "object",
+        "properties": {
+          "service": {
+            "description": "Messenger name (whatsapp, viber, etc.).",
+            "type": "string"
+          },
+          "username": {
+            "description": "Contact name in mesenger.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "username"
+        ]
+      },
+      "WhatsappContactAddress": {
+        "title": "WhatsApp contact address",
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Address type (home, work, etc.).",
+            "type": "string"
+          },
+          "country": {
+            "description": "Country.",
+            "type": "string"
+          },
+          "country_code": {
+            "description": "Country code.",
+            "type": "string"
+          },
+          "state": {
+            "description": "State.",
+            "type": "string"
+          },
+          "city": {
+            "description": "City.",
+            "type": "string"
+          },
+          "street": {
+            "description": "Street.",
+            "type": "string"
+          },
+          "zip": {
+            "description": "ZIP/postal code.",
+            "type": "string"
+          }
+        }
+      },
+      "VK": {
+        "title": "VK message",
+        "example": {
+          "from": "VKfake",
+          "content": [
+            {
+              "type": "text",
+              "text": "VK text message"
+            }
+          ]
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "description": "Code API in Messaggio's personal account.",
+            "type": "string"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VKContent"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "content"
+        ]
+      },
+      "VKContent": {
+        "title": "VK content.",
+        "example": {
+          "type": "text",
+          "text": "VK text message"
+        },
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Content type.",
+            "type": "string",
+            "enum": [
+              "text"
+            ]
+          },
+          "text": {
+            "description": "Message text.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ]
+      },
+      "SendMessagesResponse": {
+        "title": "Send message request response.",
+        "example": {
+          "accepted_at": "2021-04-02T15-14-26Z",
+          "messages": [
+            {
+              "recipient": {
+                "phone": "35699554433"
+              },
+              "message_id": "ff1ca1f9-94f2-4e43-97ed-a4ca672957c1"
+            },
+            {
+              "recipient": {
+                "phone": "123-bad-phone"
+              },
+              "error": {
+                "title": "Invalid phone number",
+                "detail": "invalid phone number"
+              }
+            }
+          ]
+        },
+        "type": "object",
+        "properties": {
+          "accepted_at": {
+            "description": "Request start time in yyy-MM-ddT-HH-mm-ss format",
+            "type": "string"
+          },
+          "messages": {
+            "description": "Sent messages array.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            }
+          }
+        },
+        "required": [
+          "accepted_at",
+          "messages"
+        ]
+      },
+      "Message": {
+        "title": "Send message request response.",
+        "example": {
+          "recipient": {
+            "phone": "35699554433"
+          },
+          "message_id": "ff1ca1f9-94f2-4e43-97ed-a4ca672957c1"
+        },
+        "type": "object",
+        "properties": {
+          "recipient": {
+            "$ref": "#/components/schemas/MessageRecipient"
+          },
+          "message_id": {
+            "description": "Message ID in the system. If identifier is empty, message failed to send, error description provided in the error field.",
+            "type": "string"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      },
+      "Error": {
+        "title": "Error",
+        "example": {
+          "title": "Invalid phone number",
+          "detail": "invalid phone number"
+        },
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "detail"
+        ]
+      },
+      "ReceiveStatusRequest": {
+        "title": "Send message request response.",
+        "example": {
+          "message_id": "ff1ca1f9-94f2-4e43-97ed-a4ca672957c1",
+          "channel": "viber",
+          "timestamp": "2021-04-02T15-14-30Z",
+          "external_id": "messaggio-acc-external-id-0",
+          "type": "status",
+          "status": 100,
+          "channel_additional_data": {
+            "viber": {
+              "session_id": "5672936410461553811",
+              "message_type": "session_ongoing"
+            }
+          }
+        },
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "description": "Message ID in the system.",
+            "type": "string"
+          },
+          "channel": {
+            "description": "Sending channel.",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "Report sending time.",
+            "type": "string"
+          },
+          "external_id": {
+            "description": "The request ID in the partner system. Filled when external_id has been transmitted in the send message request.",
+            "type": "string"
+          },
+          "type": {
+            "description": "Type of report.",
+            "type": "string",
+            "enum": [
+              "status",
+              "recipient_response"
+            ]
+          },
+          "status": {
+            "description": "Message status. Status description is provided in \"Available values for the status field in the delivery report\"",
+            "type": "integer",
+            "format": "int32"
+          },
+          "channel_additional_data": {
+            "type": "object",
+            "description": "Additional data concerning this message.",
+            "properties": {
+              "viber": {
+                "type": "object",
+                "properties": {
+                  "session_id": {
+                    "description": "Session ID.",
+                    "type": "string"
+                  },
+                  "matching_template_id": {
+                    "description": "ID of a template this message was matched with.",
+                    "type": "string"
+                  },
+                  "message_type": {
+                    "description": "Message type, indicates how the message was billed.",
+                    "type": "string",
+                    "enum": [
+                      "session_billed",
+                      "session_ongoing",
+                      "transaction",
+                      "promotion",
+                      "template"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "message_id",
+          "channel",
+          "timestamp",
+          "context",
+          "type"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Messaggio-Login"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "x-webhooks": {
+    "InboundMessage": {
+      "post": {
+        "summary": "Inbound message from user",
+        "security": [],
+        "tags": [
+          "Callback"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiveStatusTwoway"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Callback was accepted and further attempts to post it will not be taken."
+          }
+        }
+      }
+    },
+    "ReceiveStatusRequest": {
+      "post": {
+        "summary": "Message status update",
+        "security": [],
+        "tags": [
+          "Callback"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiveStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Callback was accepted and further attempts to post it will not be taken."
+          }
+        }
+      }
+    }
+  }
+}
